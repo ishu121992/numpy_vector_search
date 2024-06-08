@@ -1,99 +1,32 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CLIP Embedding Search with Numpy and Pandas</title>
-</head>
-<body>
-    <h1>CLIP Embedding Search with Numpy and Pandas</h1>
-    <p>This repository demonstrates the power of the <strong>NumPy</strong> library and its <code>vstack</code> method, providing a robust alternative to vector databases when working with embeddings in a <code>Pandas</code> DataFrame.</p>
+## Leveraging the Power of NumPy and CLIP Embeddings in Pandas DataFrame
 
-    <h2>Overview</h2>
-    <p>This notebook uses the CLIP model to generate text embeddings and search for similar images within a dataset based on cosine similarity. By leveraging <strong>NumPy</strong> and <code>vstack</code>, the embeddings are efficiently managed and searched.</p>
+### Introduction
 
-    <h2>Setup</h2>
-    <p>Before running the code, ensure you have the necessary dependencies installed:</p>
-    <pre><code>pip install torch pandas numpy scikit-learn matplotlib pillow</code></pre>
+This repository demonstrates the efficient use of NumPy and CLIP (Contrastive Language-Image Pre-training) embeddings within a Pandas DataFrame for similarity search tasks. The integration of these technologies provides a robust alternative to traditional vector databases, offering accelerated performance and ease of implementation.
 
-    <h2>Configuration</h2>
-    <p>The configuration class holds paths to the image directory, dataset CSV file, and the saved model. Modify the paths as per your setup.</p>
-    <pre><code class="language-python">
-class Config:
-    def __init__(self):
-        self.image_path = Path('../Original/')
-        self.data_csv = '../Tabdata/dataset_train_refined.csv'
-        self.model_path = '../models/clip_refined_84k.pth'  # Provide the path to your trained model
+### Highlights
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-config = Config()
-    </code></pre>
+- **NumPy's `vstack` Method**: NumPy's `vstack` method is leveraged to efficiently convert the 'image_embeddings' column of a Pandas DataFrame into a single NumPy array. This consolidation enables seamless computation of cosine similarity scores between the prompt embedding and all embeddings in the DataFrame.
 
-    <h2>Load Model and Data</h2>
-    <p>Load the pre-trained CLIP model and the image-text embedding DataFrame.</p>
-    <pre><code class="language-python">
-# Load the saved model state_dict
-model_state_dict = torch.load(config.model_path)
+- **CLIP Embeddings**: CLIP, a deep learning model by OpenAI, is utilized to generate text embeddings. These embeddings capture semantic information, facilitating accurate similarity search across multimodal datasets.
 
-# Create an instance of the CLIP model
-model, preprocess = clip.load("ViT-B/32", device=device)
+### Implementation Details
 
-# Load the saved model state_dict into the model
-model.load_state_dict(model_state_dict)
+The repository contains Python code that demonstrates the following functionalities:
 
-# Set the model to evaluation mode
-model.eval()
+1. Loading CLIP Model: The CLIP model is loaded using PyTorch and configured for evaluation mode.
 
-embed_clip = pd.read_pickle('../Tabdata/embed_img_text_84k.pkl.gz')
+2. Text Embedding Generation: Text embeddings are generated for given labels using the CLIP model. The process is optimized for batch processing, ensuring efficiency.
 
-# Read the dataset
-df = pd.read_csv(config.data_csv)
-image_file_names = [config.image_path / i for i in df['figure_file']]
-labels = df['refined_object_title'].values.tolist()
-ids = df['id'].values.tolist()
-    </code></pre>
+3. Image Embedding Retrieval: Image embeddings from a preprocessed dataset are extracted and consolidated into a NumPy array using NumPy's `vstack` method.
 
-    <h2>Generate Text Embeddings</h2>
-    <p>The function <code>generate_text_embeddings</code> generates text embeddings for given labels using the CLIP model.</p>
-    <pre><code class="language-python">
-def generate_text_embeddings(labels, batch_size=32):
-    tok_text = clip.tokenize(labels).to(device)
-    num_batches = (len(labels) + batch_size - 1) // batch_size
-    text_features = torch.empty((len(labels), model.text_projection.shape[-1])).to(device)
+4. Similarity Search: Cosine similarity scores are calculated between the prompt embedding and all embeddings in the DataFrame. The DataFrame is sorted based on these similarity scores, providing relevant search results.
 
-    with torch.no_grad():
-        for i in range(num_batches):
-            start_idx = i * batch_size
-            end_idx = min((i + 1) * batch_size, len(labels))
-            batch_tok_text = tok_text[start_idx:end_idx]
-            batch_text_features = model.encode_text(batch_tok_text)
-            text_features[start_idx:end_idx] = batch_text_features
+### Conclusion
 
-    return text_features
+By harnessing the capabilities of NumPy and CLIP embeddings within a Pandas DataFrame, this repository offers a powerful solution for similarity search tasks. The streamlined workflow and optimized computations underscore the versatility and efficiency of these technologies in real-world applications.
 
-prompt_embedding = generate_text_embeddings(['sports duffle bag']).cpu().numpy()
-    </code></pre>
+### Usage
 
-    <h2>Search Using NumPy and vstack</h2>
-    <p>The <code>vstack</code> method from <strong>NumPy</strong> is utilized to create a single array of image embeddings. This array is then used to calculate cosine similarity with the text embedding.</p>
-    <pre><code class="language-python">
-# Convert the 'image_embeddings' column to a numpy array
-img_embeddings_array = np.vstack(embed_clip['image_embeddings'].to_numpy())
+To utilize this codebase effectively, ensure that the required dependencies are installed and configured as per the provided instructions. Additionally, customize the configuration parameters as needed to suit your specific use case.
 
-# Calculate cosine similarity between the new embedding and all embeddings in the DataFrame
-def vsearch(prompt_embedding, img_embeddings_array=img_embeddings_array):
-    similarity_scores = cosine_similarity(prompt_embedding.reshape(1, -1), img_embeddings_array)
-    df['cosine_similarity'] = similarity_scores[0]
-    df_sorted = df.sort_values(by='cosine_similarity', ascending=False)
-    return df_sorted
-
-df_sorted = vsearch(prompt_embedding)
-    </code></pre>
-
-    <h2>Results</h2>
-    <p>The sorted DataFrame contains the images ranked by their similarity to the text prompt. This method demonstrates how effectively <strong>NumPy</strong> and <code>vstack</code> can handle and search through embeddings without the need for a specialized vector database.</p>
-
-    <h2>Conclusion</h2>
-    <p>Using <strong>NumPy</strong> in combination with <code>Pandas</code> provides a powerful and efficient way to manage and search embeddings, offering a versatile alternative to dedicated vector databases.</p>
-</body>
-</html>
